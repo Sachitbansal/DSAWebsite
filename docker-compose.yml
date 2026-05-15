@@ -1,0 +1,65 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: dsa_user
+      POSTGRES_PASSWORD: dsa_password
+      POSTGRES_DB: dsa_tracker
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dsa_user -d dsa_tracker"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://dsa_user:dsa_password@db:5432/dsa_tracker
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-changeme_in_production}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - nginx_certs:/etc/nginx/ssl
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_data:
+  nginx_certs:
+
+networks:
+  default:
+    driver: bridge
