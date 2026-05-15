@@ -8,8 +8,6 @@ services:
       POSTGRES_DB: dsa_tracker
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U dsa_user -d dsa_tracker"]
       interval: 10s
@@ -29,23 +27,10 @@ services:
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-changeme_in_production}
       NEXTAUTH_URL: ${NEXTAUTH_URL:-http://dsa.iitmandi.co.in}
       NODE_ENV: production
+    ports:
+      - "8001:3000"
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  nginx:
-    image: nginx:alpine
-    restart: unless-stopped
-    depends_on:
-      - app
-    ports:
-      - "8001:80"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-    healthcheck:
-      test: ["CMD", "nginx", "-t"]
       interval: 30s
       timeout: 10s
       retries: 3
