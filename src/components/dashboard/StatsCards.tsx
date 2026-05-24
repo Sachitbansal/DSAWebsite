@@ -1,53 +1,50 @@
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Flame, Clock, Code2, TrendingUp } from "lucide-react";
+import { Flame, Clock, TrendingUp, Zap } from "lucide-react";
+import { formatHrMin } from "@/lib/utils";
 
 interface StatsCardsProps {
   totalHours: number;
-  totalProblems: number;
   currentStreak: number;
   longestStreak: number;
   todayHours: number;
-  todayProblems: number;
   weekHours: number;
 }
 
 export function StatsCards({
   totalHours,
-  totalProblems,
   currentStreak,
   longestStreak,
   todayHours,
-  todayProblems,
   weekHours,
 }: StatsCardsProps) {
   const stats = [
     {
       label: "Today",
-      value: `${todayHours.toFixed(1)}h`,
-      sub: `${todayProblems} problems`,
+      value: formatHrMin(todayHours),
+      sub: "focused",
       icon: Clock,
       color: "text-blue-400",
     },
     {
       label: "This Week",
-      value: `${weekHours.toFixed(1)}h`,
-      sub: "focused study",
+      value: formatHrMin(weekHours),
+      sub: "this week",
       icon: TrendingUp,
       color: "text-violet-400",
     },
     {
-      label: "Current Streak",
+      label: "Streak",
       value: `${currentStreak}d`,
       sub: `best: ${longestStreak}d`,
       icon: Flame,
       color: "text-orange-400",
     },
     {
-      label: "Total Problems",
-      value: totalProblems.toString(),
-      sub: `${totalHours.toFixed(0)}h total`,
-      icon: Code2,
+      label: "Total",
+      value: formatHrMin(totalHours),
+      sub: "all time",
+      icon: Zap,
       color: "text-emerald-400",
     },
   ];
@@ -62,7 +59,7 @@ export function StatsCards({
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-xs text-zinc-500 mb-1">{stat.label}</p>
-                  <p className="text-2xl font-mono font-semibold text-zinc-100">
+                  <p className="text-xl font-mono font-semibold text-zinc-100 leading-tight">
                     {stat.value}
                   </p>
                   <p className="text-xs text-zinc-500 mt-0.5">{stat.sub}</p>

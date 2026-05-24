@@ -8,7 +8,6 @@ interface HeatmapDay {
   date: string;
   count: number; // 0-4 intensity
   hours: number;
-  problems: number;
 }
 
 interface HeatmapGridProps {
@@ -22,7 +21,6 @@ export function HeatmapGrid({ data }: HeatmapGridProps) {
   const [tooltip, setTooltip] = useState<{
     date: string;
     hours: number;
-    problems: number;
     x: number;
     y: number;
   } | null>(null);
@@ -121,7 +119,6 @@ export function HeatmapGrid({ data }: HeatmapGridProps) {
                       setTooltip({
                         date: day.date,
                         hours: day.hours,
-                        problems: day.problems,
                         x: rect.left,
                         y: rect.top,
                       });
@@ -157,7 +154,7 @@ export function HeatmapGrid({ data }: HeatmapGridProps) {
             {format(new Date(tooltip.date), "MMM d, yyyy")}
           </div>
           <div className="text-zinc-400">
-            {tooltip.hours.toFixed(1)}h studied · {tooltip.problems} problems
+            {tooltip.hours.toFixed(1)}h studied
           </div>
         </div>
       )}

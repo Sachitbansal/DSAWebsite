@@ -16,12 +16,10 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
-        });
+        const userCount = await prisma.user.count();
 
-        if (!user) {
-          // Auto-create user for single-user setup
+        if (userCount === 0) {
+          // First run: create the account
           const hashedPassword = await bcrypt.hash(credentials.password, 12);
           const newUser = await prisma.user.create({
             data: {
@@ -37,13 +35,21 @@ export const authOptions: NextAuthOptions = {
           };
         }
 
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email },
+        });
+
+        if (!user) {
+          throw new Error("No account found with this email.");
+        }
+
         const isPasswordValid = await bcrypt.compare(
           credentials.password,
           user.passwordHash
         );
 
         if (!isPasswordValid) {
-          return null;
+          throw new Error("Incorrect password.");
         }
 
         return {

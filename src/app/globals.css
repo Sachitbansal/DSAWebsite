@@ -77,23 +77,23 @@
 }
 
 .heatmap-0 {
-  background-color: hsl(0 0% 14.9%);
+  background-color: hsl(220 15% 12%);
 }
 
 .heatmap-1 {
-  background-color: hsl(142 50% 20%);
+  background-color: hsl(220 55% 22%);
 }
 
 .heatmap-2 {
-  background-color: hsl(142 50% 30%);
+  background-color: hsl(220 65% 38%);
 }
 
 .heatmap-3 {
-  background-color: hsl(142 50% 40%);
+  background-color: hsl(220 75% 54%);
 }
 
 .heatmap-4 {
-  background-color: hsl(142 65% 50%);
+  background-color: hsl(220 90% 68%);
 }
 
 /* Smooth transitions */

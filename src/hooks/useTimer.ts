@@ -90,9 +90,9 @@ export const useTimer = create<TimerStore>()(
         }
 
         // Save session to API
-        if (state.elapsed > 30 && state.startTime) {
+        if (state.elapsed > 0 && state.startTime) {
           try {
-            await fetch("/api/sessions", {
+            const res = await fetch("/api/sessions", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -104,6 +104,10 @@ export const useTimer = create<TimerStore>()(
                 tags: [],
               }),
             });
+            if (!res.ok) {
+              const err = await res.json().catch(() => ({}));
+              console.error("Failed to save session:", res.status, err);
+            }
           } catch (error) {
             console.error("Failed to save session:", error);
           }
@@ -145,14 +149,11 @@ export const useTimer = create<TimerStore>()(
         startTime: state.startTime,
       }),
       onRehydrateStorage: () => (state) => {
-        // Resume interval if timer was running
-        if (state && (state.running || state.paused) && state.elapsed > 0) {
-          if (state.running) {
-            const id = setInterval(() => {
-              state.tick();
-            }, 1000);
-            state.intervalId = id;
-          }
+        if (state && state.running && state.elapsed > 0) {
+          const id = setInterval(() => {
+            useTimer.getState().tick();
+          }, 1000);
+          useTimer.setState({ intervalId: id });
         }
       },
     }

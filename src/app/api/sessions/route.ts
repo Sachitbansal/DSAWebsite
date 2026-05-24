@@ -14,6 +14,7 @@ const createSessionSchema = z.object({
     "NOTES",
     "DEBUGGING",
     "MOCK_INTERVIEW",
+    "MANUAL",
   ]),
   startTime: z.string().datetime(),
   endTime: z.string().datetime().optional(),
@@ -31,10 +32,19 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const today = searchParams.get("today");
   const week = searchParams.get("week");
+  const date = searchParams.get("date"); // YYYY-MM-DD
 
   let dateFilter = {};
 
-  if (today === "true") {
+  if (date) {
+    const d = new Date(date);
+    dateFilter = {
+      startTime: {
+        gte: startOfDay(d),
+        lte: endOfDay(d),
+      },
+    };
+  } else if (today === "true") {
     const now = new Date();
     dateFilter = {
       startTime: {
@@ -58,7 +68,7 @@ export async function GET(req: NextRequest) {
       ...dateFilter,
     },
     orderBy: { startTime: "desc" },
-    take: today === "true" ? 20 : 50,
+    take: date || today === "true" ? 50 : 100,
   });
 
   const totalSeconds = sessions.reduce((sum, s) => sum + (s.duration ?? 0), 0);
@@ -75,6 +85,11 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const data = createSessionSchema.parse(body);
+
+    const userExists = await prisma.user.findUnique({ where: { id: session.user.id }, select: { id: true } });
+    if (!userExists) {
+      return NextResponse.json({ error: "Session expired. Please sign in again." }, { status: 401 });
+    }
 
     const newSession = await prisma.session.create({
       data: {

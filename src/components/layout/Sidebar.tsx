@@ -6,14 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Timer,
-  Code2,
   BarChart3,
-  BookOpen,
-  BookMarked,
-  RefreshCw,
-  ClipboardCheck,
-  Maximize2,
-  Settings,
   ChevronLeft,
   ChevronRight,
   Zap,
@@ -23,20 +16,9 @@ import { useTimer } from "@/hooks/useTimer";
 import { formatDuration } from "@/lib/utils";
 
 const navItems = [
-  {
-    label: "Dashboard",
-    href: "/dashboard",
-    icon: LayoutDashboard,
-    shortcut: "d",
-  },
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, shortcut: "d" },
   { label: "Timer", href: "/timer", icon: Timer, shortcut: "t" },
-  { label: "Problems", href: "/problems", icon: Code2, shortcut: "p" },
   { label: "Analytics", href: "/analytics", icon: BarChart3, shortcut: "a" },
-  { label: "Notes", href: "/notes", icon: BookOpen, shortcut: "n" },
-  { label: "Journal", href: "/journal", icon: BookMarked, shortcut: "j" },
-  { label: "Revisions", href: "/revisions", icon: RefreshCw, shortcut: "r" },
-  { label: "Daily Review", href: "/review", icon: ClipboardCheck, shortcut: "v" },
-  { label: "Focus Mode", href: "/focus", icon: Maximize2, shortcut: "f" },
 ];
 
 export function Sidebar() {
@@ -45,10 +27,8 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const { elapsed, running, paused } = useTimer();
 
-  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't trigger in inputs/textareas
       const target = e.target as HTMLElement;
       if (
         target.tagName === "INPUT" ||
@@ -145,20 +125,7 @@ export function Sidebar() {
       </nav>
 
       {/* Bottom */}
-      <div className="border-t border-zinc-800 px-2 py-2 space-y-0.5">
-        <Link
-          href="/settings"
-          className={cn(
-            "flex items-center gap-3 px-2 py-2 rounded-md text-sm transition-colors group",
-            pathname === "/settings"
-              ? "bg-zinc-800 text-zinc-100"
-              : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50"
-          )}
-        >
-          <Settings className="h-4 w-4 flex-shrink-0 text-zinc-500 group-hover:text-zinc-300" />
-          {!collapsed && <span>Settings</span>}
-        </Link>
-
+      <div className="border-t border-zinc-800 px-2 py-2">
         <button
           onClick={() => setCollapsed(!collapsed)}
           className="flex items-center gap-3 px-2 py-2 rounded-md text-sm text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50 transition-colors w-full"
