@@ -71,8 +71,6 @@
 
 /* Heatmap grid */
 .heatmap-cell {
-  width: 11px;
-  height: 11px;
   border-radius: 2px;
 }
 

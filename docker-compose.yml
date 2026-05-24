@@ -4,7 +4,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: dsa_user
-      POSTGRES_PASSWORD: dsa_password
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-dsa_password}
       POSTGRES_DB: dsa_tracker
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -23,21 +23,22 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://dsa_user:dsa_password@db:5432/dsa_tracker
-      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-changeme_in_production}
-      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://dsa.iitmandi.co.in}
+      DATABASE_URL: postgresql://dsa_user:${DB_PASSWORD:-dsa_password}@db:5432/dsa_tracker
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:?NEXTAUTH_SECRET is required}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:8001}
       NODE_ENV: production
     ports:
-      - "8001:3000"
+      - "${APP_PORT:-8001}:3000"
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
+      test:
+        - "CMD"
+        - "node"
+        - "-e"
+        - "require('http').get('http://localhost:3000/api/health',r=>{process.exit(r.statusCode===200?0:1)}).on('error',()=>process.exit(1))"
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 15s
 
 volumes:
   postgres_data:
-
-networks:
-  default:
-    driver: bridge

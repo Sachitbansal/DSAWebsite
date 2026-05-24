@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useState } from "react";
-import { format, getDay, startOfWeek, addDays } from "date-fns";
+import { format, getDay } from "date-fns";
 import { cn } from "@/lib/utils";
 
 interface HeatmapDay {
   date: string;
-  count: number; // 0-4 intensity
+  count: number;
   hours: number;
 }
 
@@ -15,7 +15,15 @@ interface HeatmapGridProps {
 }
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const DAYS = ["S", "M", "T", "W", "T", "F", "S"];
+
+const COLOR_CLASSES: Record<number, string> = {
+  0: "heatmap-0",
+  1: "heatmap-1",
+  2: "heatmap-2",
+  3: "heatmap-3",
+  4: "heatmap-4",
+};
 
 export function HeatmapGrid({ data }: HeatmapGridProps) {
   const [tooltip, setTooltip] = useState<{
@@ -25,14 +33,12 @@ export function HeatmapGrid({ data }: HeatmapGridProps) {
     y: number;
   } | null>(null);
 
-  // Organize data into weeks
+  // Build weeks array
   const weeks: (HeatmapDay | null)[][] = [];
 
   if (data.length > 0) {
-    // Find the start day of the first week
-    const firstDate = new Date(data[0].date);
+    const firstDate = new Date(data[0].date + "T12:00:00");
     const dayOfWeek = getDay(firstDate);
-
     let currentWeek: (HeatmapDay | null)[] = Array(dayOfWeek).fill(null);
 
     for (const day of data) {
@@ -42,22 +48,17 @@ export function HeatmapGrid({ data }: HeatmapGridProps) {
       }
       currentWeek.push(day);
     }
-
-    // Pad last week
-    while (currentWeek.length < 7) {
-      currentWeek.push(null);
-    }
+    while (currentWeek.length < 7) currentWeek.push(null);
     weeks.push(currentWeek);
   }
 
-  // Get month labels
+  // Month label positions
   const monthLabels: { month: string; weekIndex: number }[] = [];
   let lastMonth = -1;
   weeks.forEach((week, weekIndex) => {
     const firstDay = week.find((d) => d !== null);
     if (firstDay) {
-      const date = new Date(firstDay.date);
-      const month = date.getMonth();
+      const month = new Date(firstDay.date + "T12:00:00").getMonth();
       if (month !== lastMonth) {
         monthLabels.push({ month: MONTHS[month], weekIndex });
         lastMonth = month;
@@ -65,93 +66,84 @@ export function HeatmapGrid({ data }: HeatmapGridProps) {
     }
   });
 
-  const getColorClass = (count: number) => {
-    switch (count) {
-      case 0: return "heatmap-0";
-      case 1: return "heatmap-1";
-      case 2: return "heatmap-2";
-      case 3: return "heatmap-3";
-      case 4: return "heatmap-4";
-      default: return "heatmap-0";
-    }
-  };
-
   return (
-    <div className="relative">
-      {/* Month labels */}
-      <div className="flex ml-8 mb-1">
-        {weeks.map((_, weekIndex) => {
-          const label = monthLabels.find((m) => m.weekIndex === weekIndex);
-          return (
-            <div key={weekIndex} className="w-[13px] flex-shrink-0">
-              {label && (
-                <span className="text-[10px] text-zinc-500">{label.month}</span>
-              )}
-            </div>
-          );
-        })}
-      </div>
+    <div className="relative w-full select-none">
+      {/* Outer wrapper: day-label column + grid column */}
+      <div className="flex gap-1 w-full min-w-[340px]">
 
-      <div className="flex gap-1">
-        {/* Day labels */}
-        <div className="flex flex-col gap-[2px] mr-1">
-          {DAYS.map((day, i) => (
-            <div key={day} className="h-[11px] text-[9px] text-zinc-600 leading-[11px]">
-              {i % 2 === 1 ? day.slice(0, 3) : ""}
+        {/* Day labels column — fixed width */}
+        <div className="flex flex-col shrink-0 w-5 pt-4">
+          {DAYS.map((d, i) => (
+            <div
+              key={i}
+              className="flex-1 flex items-center justify-center text-[9px] text-zinc-700 font-medium"
+              style={{ minHeight: 0 }}
+            >
+              {i % 2 === 1 ? d : ""}
             </div>
           ))}
         </div>
 
-        {/* Grid */}
-        <div className="flex gap-[2px]">
-          {weeks.map((week, weekIndex) => (
-            <div key={weekIndex} className="flex flex-col gap-[2px]">
-              {week.map((day, dayIndex) => (
-                <div
-                  key={dayIndex}
-                  className={cn(
-                    "heatmap-cell cursor-pointer",
-                    day ? getColorClass(day.count) : "heatmap-0 opacity-30"
+        {/* Grid + month labels stacked */}
+        <div className="flex-1 min-w-0 flex flex-col gap-1">
+
+          {/* Month labels row — each slot is flex-1 matching its week column */}
+          <div className="flex w-full gap-[2px]">
+            {weeks.map((_, weekIndex) => {
+              const label = monthLabels.find((m) => m.weekIndex === weekIndex);
+              return (
+                <div key={weekIndex} className="flex-1 min-w-0">
+                  {label && (
+                    <span className="text-[9px] text-zinc-500 font-medium whitespace-nowrap">{label.month}</span>
                   )}
-                  onMouseEnter={(e) => {
-                    if (day) {
-                      const rect = (e.target as HTMLElement).getBoundingClientRect();
-                      setTooltip({
-                        date: day.date,
-                        hours: day.hours,
-                        x: rect.left,
-                        y: rect.top,
-                      });
-                    }
-                  }}
-                  onMouseLeave={() => setTooltip(null)}
-                />
-              ))}
-            </div>
-          ))}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Week columns */}
+          <div className="flex w-full gap-[2px]">
+            {weeks.map((week, weekIndex) => (
+              <div key={weekIndex} className="flex-1 flex flex-col gap-[2px] min-w-0">
+                {week.map((day, dayIndex) => (
+                  <div
+                    key={dayIndex}
+                    className={cn(
+                      "heatmap-cell w-full aspect-square cursor-pointer transition-opacity",
+                      day ? COLOR_CLASSES[day.count] ?? "heatmap-0" : "heatmap-0 opacity-25"
+                    )}
+                    onMouseEnter={(e) => {
+                      if (day) {
+                        const rect = (e.target as HTMLElement).getBoundingClientRect();
+                        setTooltip({ date: day.date, hours: day.hours, x: rect.left, y: rect.top });
+                      }
+                    }}
+                    onMouseLeave={() => setTooltip(null)}
+                  />
+                ))}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* Legend */}
       <div className="flex items-center gap-1 mt-3 justify-end">
-        <span className="text-[10px] text-zinc-500 mr-1">Less</span>
+        <span className="text-[10px] text-zinc-600 mr-1">Less</span>
         {[0, 1, 2, 3, 4].map((level) => (
-          <div key={level} className={cn("heatmap-cell", getColorClass(level))} />
+          <div key={level} className={cn("heatmap-cell w-3 h-3", COLOR_CLASSES[level])} />
         ))}
-        <span className="text-[10px] text-zinc-500 ml-1">More</span>
+        <span className="text-[10px] text-zinc-600 ml-1">More</span>
       </div>
 
       {/* Tooltip */}
       {tooltip && (
         <div
-          className="fixed z-50 bg-zinc-800 border border-zinc-700 rounded-md px-2.5 py-1.5 text-xs pointer-events-none"
-          style={{
-            left: tooltip.x + 16,
-            top: tooltip.y - 60,
-          }}
+          className="fixed z-50 bg-zinc-800 border border-zinc-700 rounded-md px-2.5 py-1.5 text-xs pointer-events-none shadow-xl"
+          style={{ left: tooltip.x + 12, top: tooltip.y - 56 }}
         >
           <div className="font-medium text-zinc-100">
-            {format(new Date(tooltip.date), "MMM d, yyyy")}
+            {format(new Date(tooltip.date + "T12:00:00"), "MMM d, yyyy")}
           </div>
           <div className="text-zinc-400">
             {tooltip.hours.toFixed(1)}h studied
