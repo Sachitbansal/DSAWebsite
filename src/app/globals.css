@@ -4,25 +4,25 @@
 
 @layer base {
   :root {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 6%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 6%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
+    --background: 270 60% 3%;
+    --foreground: 270 10% 97%;
+    --card: 270 50% 5%;
+    --card-foreground: 270 10% 97%;
+    --popover: 270 50% 5%;
+    --popover-foreground: 270 10% 97%;
+    --primary: 270 10% 97%;
+    --primary-foreground: 270 50% 5%;
+    --secondary: 270 35% 10%;
+    --secondary-foreground: 270 10% 97%;
+    --muted: 270 35% 10%;
+    --muted-foreground: 270 15% 60%;
+    --accent: 270 35% 10%;
+    --accent-foreground: 270 10% 97%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
+    --border: 270 40% 12%;
+    --input: 270 40% 10%;
+    --ring: 270 60% 60%;
     --radius: 0.5rem;
   }
 }
@@ -32,7 +32,10 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
+    background: linear-gradient(135deg, #060010 0%, #0e0025 40%, #080018 70%, #060010 100%);
+    background-attachment: fixed;
+    min-height: 100vh;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 
@@ -75,23 +78,23 @@
 }
 
 .heatmap-0 {
-  background-color: hsl(220 15% 12%);
+  background-color: hsl(270 30% 10%);
 }
 
 .heatmap-1 {
-  background-color: hsl(220 55% 22%);
+  background-color: hsl(270 60% 20%);
 }
 
 .heatmap-2 {
-  background-color: hsl(220 65% 38%);
+  background-color: hsl(270 70% 35%);
 }
 
 .heatmap-3 {
-  background-color: hsl(220 75% 54%);
+  background-color: hsl(270 80% 52%);
 }
 
 .heatmap-4 {
-  background-color: hsl(220 90% 68%);
+  background-color: hsl(280 90% 68%);
 }
 
 /* Smooth transitions */

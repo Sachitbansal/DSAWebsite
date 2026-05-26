@@ -65,7 +65,7 @@ export function StatsCards({ totalHours, currentStreak, longestStreak, todayHour
         return (
           <div
             key={card.key}
-            className={`relative overflow-hidden rounded-xl border bg-zinc-900/50 p-4 sm:p-5 ${card.border}`}
+            className={`relative overflow-hidden rounded-xl border bg-dp-900/50 p-4 sm:p-5 ${card.border}`}
           >
             <div className={`absolute inset-0 bg-gradient-to-br ${card.accent} pointer-events-none`} />
             <div className="relative">

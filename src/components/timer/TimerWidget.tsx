@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Play, Pause, Square, Clock } from "lucide-react";
+import { format } from "date-fns";
 import type { SessionLabel, Session } from "@/types";
 import { useQuery } from "@tanstack/react-query";
 
@@ -37,7 +38,7 @@ interface TodaySessions {
 }
 
 export function TimerWidget() {
-  const { elapsed, running, paused, label, sessionNotes, setLabel, setSessionNotes, start, pause, resume, stop } = useTimer();
+  const { elapsed, running, paused, label, sessionNotes, startTime, setLabel, setSessionNotes, start, pause, resume, stop } = useTimer();
   const [stopping, setStopping] = useState(false);
 
   const { data: todayData, refetch } = useQuery<TodaySessions>({
@@ -61,21 +62,28 @@ export function TimerWidget() {
 
   return (
     <div className="flex flex-col items-center gap-6 sm:gap-8">
-      {/* Timer ring + display */}
+      {/* Timer display */}
       <div className="relative flex items-center justify-center">
-        <div className={`absolute inset-0 rounded-full blur-3xl opacity-10 transition-colors ${
-          running ? "bg-blue-500" : paused ? "bg-amber-500" : "bg-zinc-500"
+        <div className={`absolute inset-0 rounded-2xl blur-3xl opacity-10 transition-colors ${
+          running ? "bg-violet-500" : paused ? "bg-amber-500" : "bg-dp-600"
         }`} />
-        <div className={`relative flex flex-col items-center gap-2 rounded-full border-2 w-52 h-52 sm:w-64 sm:h-64 items-center justify-center transition-colors ${
-          running ? "border-blue-500/30 bg-blue-500/5" : paused ? "border-amber-500/30 bg-amber-500/5" : "border-zinc-800 bg-zinc-900/30"
+        <div className={`relative flex flex-col items-center gap-2 rounded-2xl border-2 w-72 h-36 sm:w-80 sm:h-40 items-center justify-center transition-colors ${
+          running ? "border-violet-500/40 bg-violet-500/5" : paused ? "border-amber-500/30 bg-amber-500/5" : "border-dp-700/60 bg-dp-900/30"
         }`}>
           <div className="text-5xl sm:text-6xl font-mono tabular-nums text-zinc-100 tracking-wider timer-display">
             {formatDuration(elapsed)}
           </div>
           {(running || paused) ? (
-            <div className="flex items-center gap-1.5">
-              <div className={`w-1.5 h-1.5 rounded-full ${running ? "bg-blue-400 animate-pulse" : "bg-amber-400"}`} />
-              <span className="text-xs text-zinc-400">{running ? "Running" : "Paused"}</span>
+            <div className="flex flex-col items-center gap-0.5">
+              <div className="flex items-center gap-1.5">
+                <div className={`w-1.5 h-1.5 rounded-full ${running ? "bg-violet-400 animate-pulse" : "bg-amber-400"}`} />
+                <span className="text-xs text-zinc-400">{running ? "Running" : "Paused"}</span>
+              </div>
+              {startTime && (
+                <span className="text-[10px] text-zinc-600">
+                  Started {format(new Date(startTime), "h:mm a")}
+                </span>
+              )}
             </div>
           ) : (
             <span className="text-xs text-zinc-600">Ready</span>
@@ -86,7 +94,7 @@ export function TimerWidget() {
       {/* Label selector */}
       <div className="w-full max-w-xs">
         <Select value={label} onValueChange={(v) => setLabel(v as SessionLabel)} disabled={running || paused}>
-          <SelectTrigger className="bg-zinc-900 border-zinc-700 text-zinc-200">
+          <SelectTrigger className="bg-dp-900 border-dp-700/60 text-zinc-200">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -100,7 +108,7 @@ export function TimerWidget() {
       {/* Controls */}
       <div className="flex items-center gap-3">
         {!running && !paused && (
-          <Button onClick={start} size="lg" className="px-10 bg-blue-600 hover:bg-blue-500 text-white gap-2">
+          <Button onClick={start} size="lg" className="px-10 bg-violet-600 hover:bg-violet-500 text-white gap-2">
             <Play className="h-4 w-4" />
             Start
           </Button>
@@ -119,7 +127,7 @@ export function TimerWidget() {
         )}
         {paused && (
           <>
-            <Button onClick={resume} size="lg" className="px-7 bg-blue-600 hover:bg-blue-500 text-white gap-2">
+            <Button onClick={resume} size="lg" className="px-7 bg-violet-600 hover:bg-violet-500 text-white gap-2">
               <Play className="h-4 w-4" />
               Resume
             </Button>
@@ -138,13 +146,13 @@ export function TimerWidget() {
             placeholder="Session notes (optional)..."
             value={sessionNotes}
             onChange={(e) => setSessionNotes(e.target.value)}
-            className="bg-zinc-900 border-zinc-700/60 text-zinc-200 resize-none h-20 text-sm"
+            className="bg-dp-900 border-dp-700/50 text-zinc-200 resize-none h-20 text-sm"
           />
         </div>
       )}
 
       {/* Today summary */}
-      <div className="w-full max-w-md rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-4">
+      <div className="w-full max-w-md rounded-xl border border-dp-700/40 bg-dp-900/30 p-4">
         <div className="flex items-center gap-2 mb-3">
           <Clock className="h-3.5 w-3.5 text-zinc-500" />
           <span className="text-sm text-zinc-400 font-medium">Today</span>
@@ -155,11 +163,15 @@ export function TimerWidget() {
         {todayData?.sessions.length ? (
           <div className="space-y-1.5">
             {todayData.sessions.slice(0, 5).map((session) => (
-              <div key={session.id} className="flex items-center justify-between">
-                <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full border ${LABEL_COLORS[session.label] ?? LABEL_COLORS.MANUAL}`}>
+              <div key={session.id} className="flex items-center justify-between gap-2">
+                <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full border shrink-0 ${LABEL_COLORS[session.label] ?? LABEL_COLORS.MANUAL}`}>
                   {formatSessionLabel(session.label)}
                 </span>
-                <span className="text-xs font-mono text-zinc-500">
+                <span className="text-[10px] text-zinc-600 font-mono truncate">
+                  {format(new Date(session.startTime), "h:mm a")}
+                  {session.endTime ? ` – ${format(new Date(session.endTime), "h:mm a")}` : ""}
+                </span>
+                <span className="text-xs font-mono text-zinc-500 shrink-0">
                   {formatHrMin((session.duration ?? 0) / 3600)}
                 </span>
               </div>

@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { format, subDays, endOfWeek, eachWeekOfInterval } from "date-fns";
+import { format, subDays, endOfWeek, eachWeekOfInterval, startOfDay, endOfDay } from "date-fns";
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -47,6 +47,25 @@ export async function GET(req: NextRequest) {
       .reduce((sum, s) => sum + (s.duration ?? 0) / 3600, 0);
     return {
       week: format(weekDate, "MMM d"),
+      hours: Math.round(hours * 10) / 10,
+    };
+  });
+
+  // Last 7 days — daily hours for the bar chart
+  const dailyWeek = Array.from({ length: 7 }, (_, i) => {
+    const date = subDays(today, 6 - i);
+    const dateStr = format(date, "yyyy-MM-dd");
+    const dayStart = startOfDay(date);
+    const dayEnd = endOfDay(date);
+    const hours = sessions
+      .filter((s) => {
+        const d = new Date(s.startTime);
+        return d >= dayStart && d <= dayEnd;
+      })
+      .reduce((sum, s) => sum + (s.duration ?? 0) / 3600, 0);
+    return {
+      day: format(date, "EEE"),
+      date: dateStr,
       hours: Math.round(hours * 10) / 10,
     };
   });
@@ -100,5 +119,6 @@ export async function GET(req: NextRequest) {
     avgSessionLength,
     weeklyHours,
     dailyActivity,
+    dailyWeek,
   });
 }

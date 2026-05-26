@@ -12,6 +12,7 @@ interface HeatmapDay {
 
 interface HeatmapGridProps {
   data: HeatmapDay[];
+  onDayClick?: (date: string) => void;
 }
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -25,7 +26,7 @@ const COLOR_CLASSES: Record<number, string> = {
   4: "heatmap-4",
 };
 
-export function HeatmapGrid({ data }: HeatmapGridProps) {
+export function HeatmapGrid({ data, onDayClick }: HeatmapGridProps) {
   const [tooltip, setTooltip] = useState<{
     date: string;
     hours: number;
@@ -112,6 +113,7 @@ export function HeatmapGrid({ data }: HeatmapGridProps) {
                       "heatmap-cell w-full aspect-square cursor-pointer transition-opacity",
                       day ? COLOR_CLASSES[day.count] ?? "heatmap-0" : "heatmap-0 opacity-25"
                     )}
+                    onClick={() => day && onDayClick?.(day.date)}
                     onMouseEnter={(e) => {
                       if (day) {
                         const rect = (e.target as HTMLElement).getBoundingClientRect();

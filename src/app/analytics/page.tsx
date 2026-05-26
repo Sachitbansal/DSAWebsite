@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useMemo } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { WeeklyHoursChart } from "@/components/analytics/AnalyticsCharts";
+import { DailyLineChart, HourlyChart } from "@/components/analytics/AnalyticsCharts";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatDuration, formatHrMin, formatSessionLabel, generateHeatmapData } from "@/lib/utils";
 import { HeatmapGrid } from "@/components/dashboard/HeatmapGrid";
@@ -17,7 +17,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Plus, Pencil, Trash2 } from "lucide-react";
-import { format } from "date-fns";
+import { format, subDays } from "date-fns";
 
 interface AnalyticsData {
   totalHours: number;
@@ -27,6 +27,7 @@ interface AnalyticsData {
   avgSessionLength: number;
   weeklyHours: { week: string; hours: number }[];
   dailyActivity: { date: string; hours: number }[];
+  dailyWeek: { day: string; date: string; hours: number }[];
 }
 
 interface Session {
@@ -36,6 +37,13 @@ interface Session {
   duration: number | null;
   notes: string | null;
 }
+
+const RANGE_OPTIONS = [
+  { value: "7d", label: "Last 7 Days" },
+  { value: "1m", label: "Last 1 Month" },
+  { value: "2m", label: "Last 2 Months" },
+  { value: "6m", label: "Last 6 Months" },
+] as const;
 
 const SESSION_LABELS = [
   { value: "LEETCODE", label: "LeetCode" },
@@ -83,7 +91,7 @@ function EditSessionDialog({
           <div className="space-y-1.5">
             <p className="text-xs text-zinc-500">Category</p>
             <Select value={label} onValueChange={setLabel}>
-              <SelectTrigger className="bg-zinc-900 border-zinc-700 text-zinc-100">
+              <SelectTrigger className="bg-dp-900 border-dp-700/60 text-zinc-100">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -105,7 +113,7 @@ function EditSessionDialog({
                   max={23}
                   value={hours}
                   onChange={(e) => setHours(Math.max(0, parseInt(e.target.value) || 0))}
-                  className="bg-zinc-900 border-zinc-700 text-zinc-100 w-20"
+                  className="bg-dp-900 border-dp-700/60 text-zinc-100 w-20"
                 />
                 <span className="text-xs text-zinc-500">hr</span>
               </div>
@@ -116,7 +124,7 @@ function EditSessionDialog({
                   max={59}
                   value={minutes}
                   onChange={(e) => setMinutes(Math.max(0, Math.min(59, parseInt(e.target.value) || 0)))}
-                  className="bg-zinc-900 border-zinc-700 text-zinc-100 w-20"
+                  className="bg-dp-900 border-dp-700/60 text-zinc-100 w-20"
                 />
                 <span className="text-xs text-zinc-500">min</span>
               </div>
@@ -159,6 +167,9 @@ export default function AnalyticsPage() {
   const [addLabel, setAddLabel] = useState("MANUAL");
   const [addError, setAddError] = useState("");
   const [editingSession, setEditingSession] = useState<Session | null>(null);
+  const [hourlyDate, setHourlyDate] = useState<string | null>(null);
+  const [timeRange, setTimeRange] = useState<"7d" | "1m" | "2m" | "6m">("7d");
+  const manageRef = useRef<HTMLDivElement>(null);
 
   const { data, isLoading } = useQuery<AnalyticsData>({
     queryKey: ["analytics"],
@@ -177,6 +188,34 @@ export default function AnalyticsPage() {
       return res.json();
     },
   });
+
+  const { data: hourlyData, isLoading: hourlyLoading } = useQuery<{ hourly: { hour: number; minutes: number }[] }>({
+    queryKey: ["hourly", hourlyDate],
+    queryFn: async () => {
+      const res = await fetch(`/api/analytics/hourly?date=${hourlyDate}`);
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: !!hourlyDate,
+  });
+
+  const lineChartData = useMemo(() => {
+    const rangeDays: Record<string, number> = { "7d": 7, "1m": 30, "2m": 60, "6m": 180 };
+    const days = rangeDays[timeRange];
+    const now = new Date();
+    const interval = days <= 7 ? 1 : days <= 30 ? 5 : days <= 60 ? 10 : 30;
+    return Array.from({ length: days }, (_, i) => {
+      const date = subDays(now, days - 1 - i);
+      const dateStr = format(date, "yyyy-MM-dd");
+      const found = data?.dailyActivity.find((d) => d.date === dateStr);
+      const showLabel = i === 0 || i === days - 1 || i % interval === 0;
+      return {
+        label: showLabel ? format(date, days <= 7 ? "EEE" : "MMM d") : "",
+        date: dateStr,
+        hours: found?.hours ?? 0,
+      };
+    });
+  }, [timeRange, data?.dailyActivity]);
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["sessions", selectedDate] });
@@ -237,7 +276,7 @@ export default function AnalyticsPage() {
 
   return (
     <AppLayout>
-      <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
+      <div className="p-4 sm:p-5 lg:p-6 space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-zinc-100 tracking-tight">Analytics</h1>
           <p className="text-sm text-zinc-500 mt-0.5">Your study time at a glance</p>
@@ -245,7 +284,7 @@ export default function AnalyticsPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
           {summaryStats.map((stat) => (
-            <div key={stat.label} className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 p-4 sm:p-5">
+            <div key={stat.label} className="rounded-xl border border-dp-700/30 bg-dp-900/40 p-4 sm:p-5">
               <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-3">{stat.label}</p>
               <p className="text-2xl font-bold font-mono text-zinc-100 leading-none">{stat.value}</p>
               <p className="text-xs text-zinc-600 mt-1.5">{stat.sub}</p>
@@ -253,30 +292,55 @@ export default function AnalyticsPage() {
           ))}
         </div>
 
-        <Card className="bg-zinc-900/40 border-zinc-800/60">
+        <Card className="bg-dp-900/40 border-dp-700/30">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-zinc-400">Activity — Last 52 Weeks</CardTitle>
           </CardHeader>
           <CardContent className="pb-4">
-            <HeatmapGrid data={heatmapData} />
+            <HeatmapGrid
+              data={heatmapData}
+              onDayClick={(date) => {
+                setSelectedDate(date);
+                setTimeout(() => manageRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+              }}
+            />
           </CardContent>
         </Card>
 
-        <Card className="bg-zinc-900/40 border-zinc-800/60">
+        <Card className="bg-dp-900/40 border-dp-700/30">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-zinc-400">Weekly Study Hours</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium text-zinc-400">
+                Study Time — tap a point for hourly breakdown
+              </CardTitle>
+              <Select value={timeRange} onValueChange={(v) => setTimeRange(v as typeof timeRange)}>
+                <SelectTrigger className="bg-dp-950 border-dp-700/60 text-zinc-100 w-36 h-7 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {RANGE_OPTIONS.map((r) => (
+                    <SelectItem key={r.value} value={r.value} className="text-xs">
+                      {r.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <div className="h-[220px] bg-zinc-800/30 rounded animate-pulse" />
+              <div className="h-[220px] bg-dp-800/30 rounded animate-pulse" />
             ) : (
-              <WeeklyHoursChart data={data?.weeklyHours ?? []} />
+              <DailyLineChart
+                data={lineChartData}
+                onPointClick={(date) => setHourlyDate(date)}
+              />
             )}
           </CardContent>
         </Card>
 
         {/* Manage Data */}
-        <Card className="bg-zinc-900/40 border-zinc-800/60">
+        <Card ref={manageRef} className="bg-dp-900/40 border-dp-700/30">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-zinc-400">Manage Data</CardTitle>
           </CardHeader>
@@ -289,13 +353,13 @@ export default function AnalyticsPage() {
                   type="date"
                   value={selectedDate}
                   onChange={(e) => setSelectedDate(e.target.value)}
-                  className="bg-zinc-950 border-zinc-700 text-zinc-100 w-40"
+                  className="bg-dp-950 border-dp-700/60 text-zinc-100 w-40"
                 />
               </div>
               <div className="space-y-1">
                 <p className="text-xs text-zinc-500">Category</p>
                 <Select value={addLabel} onValueChange={setAddLabel}>
-                  <SelectTrigger className="bg-zinc-950 border-zinc-700 text-zinc-100 w-36">
+                  <SelectTrigger className="bg-dp-950 border-dp-700/60 text-zinc-100 w-36">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -313,7 +377,7 @@ export default function AnalyticsPage() {
                   max={23}
                   value={addHours}
                   onChange={(e) => setAddHours(Math.max(0, parseInt(e.target.value) || 0))}
-                  className="bg-zinc-950 border-zinc-700 text-zinc-100 w-20"
+                  className="bg-dp-950 border-dp-700/60 text-zinc-100 w-20"
                 />
               </div>
               <div className="space-y-1">
@@ -324,7 +388,7 @@ export default function AnalyticsPage() {
                   max={59}
                   value={addMinutes}
                   onChange={(e) => setAddMinutes(Math.max(0, Math.min(59, parseInt(e.target.value) || 0)))}
-                  className="bg-zinc-950 border-zinc-700 text-zinc-100 w-20"
+                  className="bg-dp-950 border-dp-700/60 text-zinc-100 w-20"
                 />
               </div>
               <Button
@@ -350,7 +414,7 @@ export default function AnalyticsPage() {
                 Sessions on {format(new Date(selectedDate + "T12:00:00"), "MMM d, yyyy")}
               </p>
               {dayLoading ? (
-                <div className="h-10 bg-zinc-800/30 rounded animate-pulse" />
+                <div className="h-10 bg-dp-800/30 rounded animate-pulse" />
               ) : !daySessions?.sessions.length ? (
                 <p className="text-xs text-zinc-600 py-2">No sessions on this day.</p>
               ) : (
@@ -358,7 +422,7 @@ export default function AnalyticsPage() {
                   {daySessions.sessions.map((s) => (
                     <div
                       key={s.id}
-                      className="flex items-center justify-between px-3 py-2 rounded-md bg-zinc-800/40 border border-zinc-700/50"
+                      className="flex items-center justify-between px-3 py-2 rounded-md bg-dp-800/40 border border-dp-700/40"
                     >
                       <div className="flex items-center gap-3">
                         <span className="text-xs text-zinc-400 font-medium">
@@ -375,7 +439,7 @@ export default function AnalyticsPage() {
                       </div>
                       <button
                         onClick={() => setEditingSession(s)}
-                        className="flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-200 transition-colors px-2 py-1 rounded hover:bg-zinc-700/50"
+                        className="flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-200 transition-colors px-2 py-1 rounded hover:bg-dp-700/50"
                       >
                         <Pencil className="h-3 w-3" />
                         Edit
@@ -403,6 +467,27 @@ export default function AnalyticsPage() {
           deleting={deleteMutation.isPending}
         />
       )}
+
+      {/* Hourly breakdown Dialog */}
+      <Dialog open={!!hourlyDate} onOpenChange={(v) => !v && setHourlyDate(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-medium text-zinc-100">
+              {hourlyDate
+                ? format(new Date(hourlyDate + "T12:00:00"), "EEE, MMM d") + " — Hourly breakdown"
+                : ""}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="pt-2">
+            {hourlyLoading ? (
+              <div className="h-[200px] bg-dp-800/30 rounded animate-pulse" />
+            ) : hourlyData ? (
+              <HourlyChart data={hourlyData.hourly} />
+            ) : null}
+            <p className="text-[10px] text-zinc-600 text-center mt-2">Each bar = DSA minutes in that hour</p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }

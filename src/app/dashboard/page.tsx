@@ -1,15 +1,14 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { StatsCards } from "@/components/dashboard/StatsCards";
-import { HeatmapGrid } from "@/components/dashboard/HeatmapGrid";
+import { TimerWidget } from "@/components/timer/TimerWidget";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
-import { generateHeatmapData, formatSessionLabel, formatHrMin } from "@/lib/utils";
-import { format, subDays } from "date-fns";
-import Link from "next/link";
-import { Timer, ArrowRight, Quote } from "lucide-react";
+import { formatSessionLabel, formatHrMin } from "@/lib/utils";
+import { format, subDays, addDays, isToday } from "date-fns";
+import { Timer, Quote, ChevronLeft, ChevronRight } from "lucide-react";
 import type { Session } from "@/types";
 
 const QUOTES = [
@@ -58,6 +57,8 @@ const LABEL_COLORS: Record<string, string> = {
 
 export default function DashboardPage() {
   const quote = getDailyQuote();
+  const [sessionDate, setSessionDate] = useState(new Date());
+  const isCurrentDay = isToday(sessionDate);
 
   const { data: analytics, isLoading: loadingAnalytics } = useQuery<AnalyticsData>({
     queryKey: ["analytics"],
@@ -68,18 +69,15 @@ export default function DashboardPage() {
     },
   });
 
+  const sessionDateStr = format(sessionDate, "yyyy-MM-dd");
   const { data: todaySessions } = useQuery<SessionsData>({
-    queryKey: ["sessions-today"],
+    queryKey: ["sessions-date", sessionDateStr],
     queryFn: async () => {
-      const res = await fetch("/api/sessions?today=true");
+      const res = await fetch(`/api/sessions?date=${sessionDateStr}`);
       if (!res.ok) throw new Error("Failed");
       return res.json();
     },
   });
-
-  const heatmapData = analytics?.dailyActivity
-    ? generateHeatmapData(analytics.dailyActivity)
-    : generateHeatmapData([]);
 
   const todayStr = format(new Date(), "yyyy-MM-dd");
   const todayHours = analytics?.dailyActivity?.find((d) => d.date === todayStr)?.hours ?? 0;
@@ -88,30 +86,20 @@ export default function DashboardPage() {
 
   return (
     <AppLayout>
-      <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
+      <div className="p-4 sm:p-5 lg:p-6 space-y-6">
 
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-zinc-100 tracking-tight">Dashboard</h1>
-            <p className="text-sm text-zinc-500 mt-0.5">{format(new Date(), "EEEE, MMMM d, yyyy")}</p>
-          </div>
-          <Link
-            href="/timer"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-colors self-start sm:self-auto"
-          >
-            <Timer className="h-4 w-4" />
-            Start Session
-            <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
+        <div>
+          <h1 className="text-2xl font-bold text-zinc-100 tracking-tight">Dashboard</h1>
+          <p className="text-sm text-zinc-500 mt-0.5">{format(new Date(), "EEEE, MMMM d, yyyy")}</p>
         </div>
 
         {/* Motivational Quote */}
-        <div className="relative rounded-xl border border-blue-500/15 bg-blue-500/5 p-4 sm:p-5">
-          <Quote className="absolute top-4 left-4 h-4 w-4 text-blue-500/40" />
+        <div className="relative rounded-xl border border-violet-500/20 bg-violet-500/5 p-4 sm:p-5">
+          <Quote className="absolute top-4 left-4 h-4 w-4 text-violet-400/40" />
           <blockquote className="pl-6">
             <p className="text-sm sm:text-base text-zinc-300 font-medium leading-relaxed italic">
-              "{quote.text}"
+              &ldquo;{quote.text}&rdquo;
             </p>
           </blockquote>
         </div>
@@ -120,7 +108,7 @@ export default function DashboardPage() {
         {loadingAnalytics ? (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-28 bg-zinc-900/50 border border-zinc-800 rounded-xl animate-pulse" />
+              <div key={i} className="h-28 bg-dp-900/50 border border-dp-700/40 rounded-xl animate-pulse" />
             ))}
           </div>
         ) : (
@@ -133,63 +121,74 @@ export default function DashboardPage() {
           />
         )}
 
-        {/* Heatmap + Today Sessions — side by side on large screens */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
-          {/* Heatmap */}
-          <Card className="xl:col-span-2 bg-zinc-900/40 border-zinc-800/60">
+        {/* Timer + Today's Sessions */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 sm:gap-6">
+          {/* Study Session — wider */}
+          <Card className="lg:col-span-3 bg-dp-900/40 border-dp-700/30">
             <CardHeader className="pb-2 pt-5 px-5">
               <CardTitle className="text-sm font-medium text-zinc-400 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block" />
-                Activity — Last 52 Weeks
+                <span className="w-1.5 h-1.5 rounded-full bg-violet-400 inline-block" />
+                Study Session
               </CardTitle>
             </CardHeader>
-            <CardContent className="px-5 pb-5">
-              <HeatmapGrid data={heatmapData} />
+            <CardContent className="px-5 pb-6">
+              <TimerWidget />
             </CardContent>
           </Card>
 
           {/* Today's Sessions */}
-          <Card className="bg-zinc-900/40 border-zinc-800/60">
+          <Card className="lg:col-span-2 bg-dp-900/40 border-dp-700/30">
             <CardHeader className="pb-2 pt-5 px-5">
-              <CardTitle className="text-sm font-medium text-zinc-400 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
-                Today&apos;s Sessions
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium text-zinc-400 flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
+                  {isCurrentDay ? "Today's Sessions" : format(sessionDate, "MMM d")}
+                </CardTitle>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setSessionDate((d) => subDays(d, 1))}
+                    className="p-1 rounded hover:bg-dp-800 text-zinc-500 hover:text-zinc-300 transition-colors"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => setSessionDate((d) => addDays(d, 1))}
+                    disabled={isCurrentDay}
+                    className="p-1 rounded hover:bg-dp-800 text-zinc-500 hover:text-zinc-300 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
             </CardHeader>
             <CardContent className="px-5 pb-5">
               {!todaySessions?.sessions.length ? (
                 <div className="flex flex-col items-center justify-center py-10 text-center">
-                  <div className="w-12 h-12 rounded-full bg-zinc-800/60 flex items-center justify-center mb-3">
+                  <div className="w-12 h-12 rounded-full bg-dp-800/60 flex items-center justify-center mb-3">
                     <Timer className="h-5 w-5 text-zinc-600" />
                   </div>
                   <p className="text-sm text-zinc-500 font-medium">No sessions yet</p>
                   <p className="text-xs text-zinc-600 mt-1">Start your first session today</p>
-                  <Link
-                    href="/timer"
-                    className="mt-3 text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 transition-colors"
-                  >
-                    Go to Timer <ArrowRight className="h-3 w-3" />
-                  </Link>
                 </div>
               ) : (
                 <div className="space-y-2">
                   {todaySessions.sessions.map((s) => (
                     <div
                       key={s.id}
-                      className="flex items-center justify-between py-2 border-b border-zinc-800/50 last:border-0 gap-2"
+                      className="flex items-center justify-between py-2 border-b border-dp-700/40 last:border-0 gap-2"
                     >
-                      <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full border ${LABEL_COLORS[s.label] ?? LABEL_COLORS.MANUAL}`}>
+                      <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full border shrink-0 ${LABEL_COLORS[s.label] ?? LABEL_COLORS.MANUAL}`}>
                         {formatSessionLabel(s.label)}
                       </span>
-                      <span className="text-xs font-mono text-zinc-400 ml-auto">
+                      <span className="text-xs font-mono text-zinc-400 ml-auto shrink-0">
                         {formatHrMin((s.duration ?? 0) / 3600)}
                       </span>
                     </div>
                   ))}
-                  <div className="pt-2 flex items-center justify-between border-t border-zinc-800/50">
+                  <div className="pt-2 flex items-center justify-between border-t border-dp-700/40">
                     <span className="text-xs text-zinc-600">Total</span>
                     <span className="text-xs font-mono font-semibold text-zinc-300">
-                      {formatHrMin((todaySessions.totalSeconds) / 3600)}
+                      {formatHrMin(todaySessions.totalSeconds / 3600)}
                     </span>
                   </div>
                 </div>
@@ -197,6 +196,7 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         </div>
+
       </div>
     </AppLayout>
   );
